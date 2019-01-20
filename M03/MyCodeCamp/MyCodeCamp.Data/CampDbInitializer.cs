@@ -1,33 +1,32 @@
-﻿using System;
+﻿using MyCodeCamp.Data.Model;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Identity;
-using MyCodeCamp.Data.Entities;
 
 namespace MyCodeCamp.Data
 {
-  public class CampDbInitializer
-  {
-    private CampContext _ctx;
-
-    public CampDbInitializer(CampContext ctx)
+    public class CampDbInitializer
     {
-      _ctx = ctx;
-    }
+        private EFDataContext _ctx;
 
-    public async Task Seed()
-    {
-      if (!_ctx.Camps.Any())
-      {
-        // Add Data
-        _ctx.AddRange(_sample);
-        await _ctx.SaveChangesAsync();
-      }
-    }
+        public CampDbInitializer(EFDataContext ctx)
+        {
+            _ctx = ctx;
+        }
 
-    List<Camp> _sample = new List<Camp>
+        public async Task Seed()
+        {
+            if (!_ctx.Camps.Any())
+            {
+                // Add Data
+                _ctx.AddRange(_sample);
+                await _ctx.SaveChangesAsync();
+            }
+        }
+
+        List<Camp> _sample = new List<Camp>
     {
       new Camp()
       {
@@ -107,5 +106,5 @@ namespace MyCodeCamp.Data
       }
     };
 
-  }
+    }
 }
