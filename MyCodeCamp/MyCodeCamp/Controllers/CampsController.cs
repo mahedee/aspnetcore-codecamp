@@ -2,48 +2,54 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using MyCodeCamp.Data;
 using MyCodeCamp.Data.Model;
+using MyCodeCamp.Models;
 
 namespace MyCodeCamp.Controllers
 {
     [Route("api/[controller]")]
-    public class CampsController : Controller
+    public class CampsController : BaseController
     {
         private ICampRepository _repo;
         private ILogger<CampsController> _logger;
+        private IMapper _mapper;
 
-        public CampsController(ICampRepository repo, ILogger<CampsController> logger )
+        public CampsController(ICampRepository repo, 
+            ILogger<CampsController> logger,
+            IMapper mapper)
         {
             _repo = repo;
             _logger = logger;
+            _mapper = mapper;
         }
         //[HttpGet("api/camps")]
         [HttpGet("")]
         public IActionResult Get()
         {
             var camps = _repo.GetAllCamps();
-            return Ok(camps);
+            return Ok(_mapper.Map<IEnumerable<CampModel>>(camps));
         }
 
-        [HttpGet("{id}", Name = "CampGet")]
-        public IActionResult Get(int id, bool includeSpeakers = false)
+        [HttpGet("{moniker}", Name = "CampGet")]
+        public IActionResult Get(string moniker, bool includeSpeakers = false)
         {
             try
             {
                 Camp camp = null;
 
-                if (includeSpeakers) camp = _repo.GetCampWithSpeakers(id);
-                else camp = _repo.GetCamp(id);
+                if (includeSpeakers) camp = _repo.GetCampByMonikerWithSpeakers(moniker);
+                else camp = _repo.GetCampByMoniker(moniker);
 
-                if (camp == null) return NotFound($"Camp {id} was not found");
-                return Ok(camp);
+                if (camp == null) return NotFound($"Camp {moniker} was not found");
+
+                return Ok(_mapper.Map<CampModel>(camp));
             }
             catch
             {
-
             }
 
             return BadRequest();
