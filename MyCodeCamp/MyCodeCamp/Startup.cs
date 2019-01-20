@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using MyCodeCamp.Data;
 
 namespace MyCodeCamp
 {
@@ -25,6 +26,8 @@ namespace MyCodeCamp
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+            services.AddDbContext<EFDataContext>(ServiceLifetime.Scoped);
+            services.AddScoped<ICampRepository, CampRepository>();
            // services.AddScoped<SchoolContext>(_ => new SchoolContext(Configuration.GetConnectionString("DefaultConnection")));
         }
 
