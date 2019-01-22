@@ -32,8 +32,10 @@ namespace MyCodeCamp.Controllers
             _logger = logger;
             _mapper = mapper;
         }
+
         //[HttpGet("api/camps")]
         [HttpGet("")]
+        //[Authorize]
         public IActionResult Get()
         {
             var camps = _repo.GetAllCamps();

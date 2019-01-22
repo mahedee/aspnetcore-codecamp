@@ -21,143 +21,145 @@ using Newtonsoft.Json;
 
 namespace MyCodeCamp
 {
-  public class Startup
-  {
-    public Startup(IHostingEnvironment env)
+    public class Startup
     {
-      var builder = new ConfigurationBuilder()
-          .SetBasePath(env.ContentRootPath)
-          .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-          .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true)
-          .AddEnvironmentVariables();
+        public Startup(IHostingEnvironment env)
+        {
+            var builder = new ConfigurationBuilder()
+                .SetBasePath(env.ContentRootPath)
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true)
+                .AddEnvironmentVariables();
 
-      _env = env;
-      _config = builder.Build();
-    }
+            _env = env;
+            _config = builder.Build();
+        }
 
-    IConfigurationRoot _config;
-    private IHostingEnvironment _env;
+        IConfigurationRoot _config;
+        private IHostingEnvironment _env;
 
-    // This method gets called by the runtime. Use this method to add services to the container.
-    public void ConfigureServices(IServiceCollection services)
-    {
+        // This method gets called by the runtime. Use this method to add services to the container.
+        public void ConfigureServices(IServiceCollection services)
+        {
 
-      services.AddSingleton(_config);
-      services.AddDbContext<CampContext>(ServiceLifetime.Scoped);
-      services.AddScoped<ICampRepository, CampRepository>();
-      services.AddTransient<CampDbInitializer>();
-      services.AddTransient<CampIdentityInitializer>();
+            services.AddSingleton(_config);
+            services.AddDbContext<CampContext>(ServiceLifetime.Scoped);
+            services.AddScoped<ICampRepository, CampRepository>();
+            services.AddTransient<CampDbInitializer>();
+            services.AddTransient<CampIdentityInitializer>();
 
-      services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
-      services.AddAutoMapper();
+            services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+            services.AddAutoMapper();
 
-      services.AddIdentity<CampUser, IdentityRole>()
-        .AddEntityFrameworkStores<CampContext>();
+            services.AddIdentity<CampUser, IdentityRole>()
+              .AddEntityFrameworkStores<CampContext>();
 
-      services.Configure<IdentityOptions>(config =>
-      {
-        config.Cookies.ApplicationCookie.Events =
-          new CookieAuthenticationEvents()
+            services.Configure<IdentityOptions>(config =>
+            {
+                config.Cookies.ApplicationCookie.Events =
+            new CookieAuthenticationEvents()
+                {
+                    OnRedirectToLogin = (ctx) =>
+              {
+                      if (ctx.Request.Path.StartsWithSegments("/api") && ctx.Response.StatusCode == 200)
+                      {
+                          ctx.Response.StatusCode = 401;
+                      }
+
+                      return Task.CompletedTask;
+                  },
+                    OnRedirectToAccessDenied = (ctx) =>
+              {
+                      if (ctx.Request.Path.StartsWithSegments("/api") && ctx.Response.StatusCode == 200)
+                      {
+                          ctx.Response.StatusCode = 403;
+                      }
+
+                      return Task.CompletedTask;
+                  }
+                };
+            });
+
+            services.AddCors(cfg =>
+            {
+                cfg.AddPolicy("Wildermuth", bldr =>
           {
-            OnRedirectToLogin = (ctx) =>
+                  bldr.AllowAnyHeader()
+                .AllowAnyMethod()
+                .WithOrigins("http://wildermuth.com");
+              });
+
+                cfg.AddPolicy("AnyGET", bldr =>
+          {
+                  bldr.AllowAnyHeader()
+                .WithMethods("GET")
+                .AllowAnyOrigin();
+              });
+            });
+
+            services.AddAuthorization(cfg =>
             {
-              if (ctx.Request.Path.StartsWithSegments("/api") && ctx.Response.StatusCode == 200)
-              {
-                ctx.Response.StatusCode = 401;
-              }
+                cfg.AddPolicy("SuperUsers", p => p.RequireClaim("SuperUser", "True"));
+            });
 
-              return Task.CompletedTask;
-            },
-            OnRedirectToAccessDenied = (ctx) =>
+            // Add framework services.
+            services.AddMvc(opt =>
             {
-              if (ctx.Request.Path.StartsWithSegments("/api") && ctx.Response.StatusCode == 200)
+                if (!_env.IsProduction())
+                {
+                    opt.SslPort = 44388;
+                }
+                opt.Filters.Add(new RequireHttpsAttribute());
+            })
+              .AddJsonOptions(opt =>
               {
-                ctx.Response.StatusCode = 403;
-              }
-
-              return Task.CompletedTask;
-            }
-          };
-      });
-
-      services.AddCors(cfg =>
-      {
-        cfg.AddPolicy("Wildermuth", bldr =>
-        {
-          bldr.AllowAnyHeader()
-              .AllowAnyMethod()
-              .WithOrigins("http://wildermuth.com");
-        });
-
-        cfg.AddPolicy("AnyGET", bldr =>
-        {
-          bldr.AllowAnyHeader()
-              .WithMethods("GET")
-              .AllowAnyOrigin();
-        });
-      });
-
-      services.AddAuthorization(cfg =>
-      {
-        cfg.AddPolicy("SuperUsers", p => p.RequireClaim("SuperUser", "True"));
-      });
-
-      // Add framework services.
-      services.AddMvc(opt =>
-      {
-        if (!_env.IsProduction())
-        {
-          opt.SslPort = 44388;
+                  opt.SerializerSettings.ReferenceLoopHandling =
+              ReferenceLoopHandling.Ignore;
+              });
         }
-        opt.Filters.Add(new RequireHttpsAttribute());
-      })
-        .AddJsonOptions(opt =>
+
+        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+        public void Configure(IApplicationBuilder app,
+          IHostingEnvironment env,
+          ILoggerFactory loggerFactory,
+          CampDbInitializer seeder,
+          CampIdentityInitializer identitySeeder)
         {
-          opt.SerializerSettings.ReferenceLoopHandling =
-            ReferenceLoopHandling.Ignore;
-        });
-    }
+            loggerFactory.AddConsole(_config.GetSection("Logging"));
+            loggerFactory.AddDebug();
 
-    // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-    public void Configure(IApplicationBuilder app, 
-      IHostingEnvironment env, 
-      ILoggerFactory loggerFactory,
-      CampDbInitializer seeder,
-      CampIdentityInitializer identitySeeder)
-    {
-      loggerFactory.AddConsole(_config.GetSection("Logging"));
-      loggerFactory.AddDebug();
+            //app.UseCors(cfg =>
+            //{
+            //  cfg.AllowAnyHeader()
+            //     .AllowAnyMethod()
+            //     .WithOrigins("http://wildermuth.com");
+            //});
 
-      //app.UseCors(cfg =>
-      //{
-      //  cfg.AllowAnyHeader()
-      //     .AllowAnyMethod()
-      //     .WithOrigins("http://wildermuth.com");
-      //});
+            app.UseIdentity();
+            app.UseAuthentication();
+            app.UseMvcWithDefaultRoute();
 
-      app.UseIdentity();
+            //app.UseJwtBearerAuthentication(new JwtBearerOptions()
+            //{
+            //  AutomaticAuthenticate = true,
+            //  AutomaticChallenge = true,
+            //  TokenValidationParameters = new TokenValidationParameters()
+            //  {
+            //    ValidIssuer = _config["Tokens:Issuer"],
+            //    ValidAudience = _config["Tokens:Audience"],
+            //    ValidateIssuerSigningKey = true,
+            //    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Tokens:Key"])),
+            //    ValidateLifetime = true
+            //  }
+            //});
 
-      app.UseJwtBearerAuthentication(new JwtBearerOptions()
+            app.UseMvc(config =>
       {
-        AutomaticAuthenticate = true,
-        AutomaticChallenge = true,
-        TokenValidationParameters = new TokenValidationParameters()
-        {
-          ValidIssuer = _config["Tokens:Issuer"],
-          ValidAudience = _config["Tokens:Audience"],
-          ValidateIssuerSigningKey = true,
-          IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Tokens:Key"])),
-          ValidateLifetime = true
+          //config.MapRoute("MainAPIRoute", "api/{controller}/{action}");
+      });
+
+            seeder.Seed().Wait();
+            identitySeeder.Seed().Wait();
         }
-      });
-
-      app.UseMvc(config =>
-      {
-        //config.MapRoute("MainAPIRoute", "api/{controller}/{action}");
-      });
-
-      seeder.Seed().Wait();
-      identitySeeder.Seed().Wait();
     }
-  }
 }
