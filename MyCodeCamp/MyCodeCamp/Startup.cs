@@ -11,13 +11,17 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Versioning;
+using Microsoft.AspNetCore.Mvc.Versioning.Conventions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using MyCodeCamp.Controllers;
 using MyCodeCamp.Data;
 using MyCodeCamp.Data.Model;
+using MyCodeCamp.Models;
 using Newtonsoft.Json;
 
 namespace MyCodeCamp
@@ -120,6 +124,25 @@ namespace MyCodeCamp
                 ReferenceLoopHandling.Ignore;
           });
 
+
+            services.AddApiVersioning(cgf =>
+            {
+                cgf.DefaultApiVersion = new ApiVersion(1, 1);
+                cgf.AssumeDefaultVersionWhenUnspecified = true;
+                cgf.ReportApiVersions = true;
+                var rdr = new HeaderApiVersionReader("ver");
+                rdr.HeaderNames.Add("X-MyCodeCamp-Version");
+                cgf.ApiVersionReader = rdr;
+
+
+               cgf.Conventions.Controller<TalksController>()
+              .HasApiVersion(new ApiVersion(1, 0))
+              .HasApiVersion(new ApiVersion(1, 1))
+              .HasApiVersion(new ApiVersion(2, 0))
+              .Action(m => m.Post(default(string), default(int), default(TalkModel)))
+                .MapToApiVersion(new ApiVersion(2, 0));
+
+            });
 
 
 
