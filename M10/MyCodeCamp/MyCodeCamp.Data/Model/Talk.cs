@@ -1,27 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Threading.Tasks;
+using System.Text;
 
-namespace MyCodeCamp.Models
+namespace MyCodeCamp.Data.Model
 {
-    public class TalkModel
+    public class Talk
     {
-        public string Url { get; set; }
-        [Required]
+        public int Id { get; set; }
         public string Title { get; set; }
-        [Required]
         public string Abstract { get; set; }
-        [Required]
         public string Category { get; set; }
         public string Level { get; set; }
         public string Prerequisites { get; set; }
         public DateTime StartingTime { get; set; } = DateTime.Now;
         public string Room { get; set; }
 
-        public ICollection<LinkModel> Links { get; set; }
+        public Speaker Speaker { get; set; }
 
+        public byte[] RowVersion { get; set; }
 
     }
 }
